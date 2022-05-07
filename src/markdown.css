@@ -468,7 +468,7 @@ span.CodeMirror-selectedtext {
   color: #9c3328;
 }
 
-.cm-s-neo .cm-string {
+.cm-s-neo .cm-string, .cm-variable-2 {
   color: #b35e14;
 }
 
@@ -553,4 +553,8 @@ span.CodeMirror-selectedtext {
 }
 .mdeditor_scroll {
   padding: 10px 20px;
+}
+
+.CodeMirror-cursors {
+  visibility: initial !important;
 }

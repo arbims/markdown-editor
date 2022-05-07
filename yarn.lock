@@ -4,7 +4,7 @@
 
 codemirror@^5.65.3:
   version "5.65.3"
-  resolved "https://registry.npmjs.org/codemirror/-/codemirror-5.65.3.tgz"
+  resolved "https://registry.yarnpkg.com/codemirror/-/codemirror-5.65.3.tgz#2d029930d5a293bc5fb96ceea64654803c0d4ac7"
   integrity sha512-kCC0iwGZOVZXHEKW3NDTObvM7pTIyowjty4BUqeREROc/3I6bWbgZDA3fGDwlA+rbgRjvnRnfqs9SfXynel1AQ==
 
 colorette@^1.2.2:
