@@ -1,5 +1,6 @@
 import './index.css'
 import './markdown.css'
+import './github.css'
 import $ from 'jquery'
 import CodeMirror from 'codemirror'
 import 'codemirror/mode/markdown/markdown'
@@ -46,7 +47,9 @@ $(function(){
   })
 
   markedContent(editor)
+  updateContent(editor)
   createButton()
+  resizeEditor()
 })
 
 const markedContent = function(editor) {
@@ -54,6 +57,31 @@ const markedContent = function(editor) {
   var markedcontent = marked.parse(value)
   let preview = $('.mdeditor_preview')
   preview.append(markedcontent)
+}
+
+const updateContent = function(editor) {
+    editor.on('keyup', function(){
+        var content = editor.getValue()
+        var markedcontent = marked.parse(content)
+        $('.mdeditor_preview').html(markedcontent)
+        var cursor = editor.doc.getCursor();
+        editor.doc.setCursor({
+          line: cursor.line,
+          ch: cursor.ch
+        });
+      
+    })
+}
+
+const resizeEditor = function () {
+   $('.mdeditor_resize').on('click', function(e) {
+        e.preventDefault()
+        if($('.mdeditor').hasClass('fullscreen')) {
+            $('.mdeditor').removeClass('fullscreen')
+        }else{
+            $('.mdeditor').addClass('fullscreen')
+        }        
+    })
 }
 
 const createButton = function() {

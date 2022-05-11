@@ -7,62 +7,299 @@
     <title>Create Coffee App</title>
   </head>
   <body>
-    <div data-mdeditor>
-      <textarea name="content">
-## An h2 header
+    <div class="container" style="margin-top: 50px;">
+      <h3>Content Markdown</h3>
+      <div>  
+        <textarea name="content" class="el">
+# How use Javascript lib
 
-Paragraphs are separated by a blank line.
+> Libs
 
-2nd paragraph. *Italic*, **bold**, and `monospace`. Itemized lists
-look like:
+>    1. [x] React
+>    2. [ ] Vue
+>    3. [ ] Ember
+>    4. [x] Coffeescript
+>    5. [x] jQuery
 
-* this one
-* that one
-* the other one
+<br>
 
-> Block quotes are
-> written like so.
->
-> They can span multiple paragraphs,
-> if you like.
+![coffeescript](https://grafikart.fr/uploads/icons/coffeescript.svg)
 
-Use 3 dashes for an em-dash. Use 2 dashes for ranges (ex., "it's all
-in chapters 12--14"). Three dots ... will be converted to an ellipsis.
-Unicode is supported. ☺
+<br>
 
-And here is a bit of code
+Je vous propose aujourd'hui de découvrir ensemble la Stack Elastic. Le principe de cette série d'outils est de créer de manière automatique des dashboards à partir de données provenant des logs de vos serveurs. Cette stack, anciennement appelé ELK, est composée de 3 outils principaux :
 
-```php
-<?php
-$myvar = 'Here is my code';
-echo $myvar;
-?>
+| Je teste | Les tableaux |  |
+|-----|-----|-----|
+| Oui | Non | Oui |
+| Oui | Non | Oui |
+| Oui | Non | Oui |
+
+- ElasticSearch et un moteur de recherche et d'analyse restful distribuer
+- Logstash est un "pipeline" kylie et qui traite en simultané des données provenant de multiples sources et qui les transforme ensuite vers n'importe quel système de stockage.
+- Kibana permet de consulter des données provenant des ElasticSearch et de les explorer grâce à un dashboard entièrement personnalisable.
+
+Récemment, un nouvel outil a été rajouté à la Stack Elastic : [Beats](https://www.elastic.co/fr/products/beats). Nous ne traiterons pas ici de cet outil car il n'a d'intérêt que si vous utilisez plusieurs machines (c'est un agents léger qui permet aux machines de transmettre les données provenant de vos logs vers Logstash ou Elasticsearch)
+
+Nous allons donc voir ensemble comment installer et configurer ces 3 outils. Notre objectif est de traiter les logs provenant de nginx pour créer un dashboard simplifiant l'accès aux données qui nous intérèssent.
+
+Pour la suite de cet article j'utiliserais Ubuntu Xenial (16.04). Si vous souhaitez utiliser la même configuration que moi, voici ma configuration vagrant :
+
+```ruby
+Vagrant.configure("2") do |config|
+  config.vm.box = "ubuntu/xenial64"
+  config.vm.network "private_network", ip: "192.168.50.50"
+  config.vm.provider "virtualbox" do |v|
+    v.memory = 4096
+    v.cpus = 2
+  end
+end
 ```
 
-### An h3 header
+## Avant de commencer
 
-Paragraphs are separated by a blank line.
+Avant de commencer il faut commencer par installer la version 8 ou supérieur de Java. Vous pouvez utiliser la distribution officielle d'Oracle ou utiliser la version open source OpenJDK
 
-![Kill all humans !](http://lorempicsum.com/futurama/627/300/4)
+```bash
+sudo apt-get update
+sudo apt-get install openjdk-8-jdk
+```
 
-2nd paragraph. *Italic*, **bold**, and `monospace`. Itemized lists
-look like:
+## Elasticsearch
 
-* this one
-* that one
-* the other one
+Nous allons commencer par l'installation d'ElasticSearch. Il existe différentes méthodes pour l'installer mais nous allons utiliser la méthode la plus simple, celle basée sur l'utilisation des [Dépôts](https://www.elastic.co/guide/en/elasticsearch/reference/current/deb.html). On commence par importer la clé PGP d'ElasticSearch.
 
-> Block quotes are
-> written like so.
->
-> They can span multiple paragraphs,
-> if you like.
+```
+wget -qO - https://artifacts.elastic.co/GPG-KEY-elasticsearch | sudo apt-key add -
+```
 
-Use 3 dashes for an em-dash. Use 2 dashes for ranges (ex., "it's all
-in chapters 12--14"). Three dots ... will be converted to an ellipsis.
-Unicode is supported. ☺
-      </textarea>
+On installe ensuite le paquet `apt-transport-https` afin de pouvoir utiliser les lignes `deb https://domain distro main` dans la liste des dépôts.
+
+```bash
+sudo apt-get install apt-transport-https
+```
+
+Et ensuite il ne nous resque plus qu'à lancer l'installation.
+
+```bash
+sudo apt-get update
+sudo apt-get install elasticsearch
+```
+
+Contrairement à d'autres applications, ElasticSearch n'est pas démarrée automatiquement à la fin de l'installation et n'est pas non plus rajoutée dans la liste des applications lancées au démarrage.
+Pour indiquer à notre système de démarrer ElasticSearch au boot (Attention, j'utilise ici Ubuntu 16.04 qui utilise `systemd`  au lieu de `init` donc vous devrez peut être adapter cette commande à votre système)
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable elasticsearch.service
+```
+
+Avant de démarrer ElasticSearch, nous allons nous assurer que le serveur n'écoute que sur localhost afin d'éviter que n'importe qui puisse accéder à nos données depuis l'extérieur. Pour cela, nous allons éditer le fichier `/etc/elasticsearch/elasticsearch.yml`  (dans tous les cas vous devriez avoir un [pare feu](https://www.grafikart.fr/formations/serveur-linux/ufw) pour éviter ce genre de problèmes).
+
+```
+network.host: localhost
+```
+
+Autre petit détail, si vous êtes sur un système plutôt modeste, vous pouvez changer la quantité de RAM qui est alloué par Java en modifiant le fichier `/etc/elasticsearch/jvm.options`
+
+```bash
+# Xms represents the initial size of total heap space
+# Xmx represents the maximum size of total heap space
+-Xms512m
+-Xmx512m
+```
+
+Une fois ces modifications effectuées, nous pouvons enfin démarrer elasticSearch.
+
+```bash
+sudo systemctl start elasticsearch.service
+```
+
+Pour s'assurer que l'installation s'est correctement effectuée et que le service fonctionne correctement on peut appeller l'URL `http://localhost:9200`
+
+```bash
+curl "localhost:9200"
+{
+  "name" : "ddI1Qyn",
+  "cluster_name" : "elasticsearch",
+  "cluster_uuid" : "t_0C9EZAR6alCe5k1rxfvg",
+  "version" : {
+    "number" : "6.1.2",
+    "build_hash" : "5b1fea5",
+    "build_date" : "2018-01-10T02:35:59.208Z",
+    "build_snapshot" : false,
+    "lucene_version" : "7.1.0",
+    "minimum_wire_compatibility_version" : "5.6.0",
+    "minimum_index_compatibility_version" : "5.0.0"
+  },
+  "tagline" : "You Know, for Search"
+}
+```
+
+Si jamais le service ne démarre pas correctement, vous pouvez vérifier les journaux
+
+```
+sudo journalctl -n 50 -f -u elasticsearch
+```
+
+Et le reste des erreurs peuvent être obtenues en lisant les logs à l'emplacement habituel `/var/log/elasticsearch`
+
+## Logstash
+
+Maintenant que nous avons installé elasticSearch, il va falloir remplir notre base de données avec les informations provenant de nos logs. Nous allons donc commencer par installer logstash.
+
+```bash
+sudo apt-get install logstash
+```
+
+Puis nous allons enregistrer le service au démarrage
+
+```
+sudo systemctl daemon-reload
+sudo systemctl enable logstash.service
+```
+
+Ensuite, il va falloir créer un fichier de configuration pour expliquer à Logstash comment traiter nos données. La configuration fonctionne en 3 partie :
+
+- La partie **input**, permet d'indiquer comment les données vont entrer dans le pipeline
+- La partie **filter** va permettre d'indiquer comment parser et extraire les données
+- La partie **output** permet d'indiquer où vont être envoyées les données
+
+Dans notre cas, on souhaite utiliser les log provenant de nginx donc nous allons utiliser l'input [File](https://www.elastic.co/guide/en/logstash/6.x/plugins-inputs-file.html).
+Pour la partie filtre, les logs de nginx ont l'avantage d'avoir un format conventionnel et nous allons donc pouvoir utiliser un pattern [grok](https://www.elastic.co/guide/en/logstash/6.x/plugins-filters-grok.html) pour extraire les informations (si vous voulez en apprendre plus sur l'ensemble des filtres qui sont disponibles au niveau de Logstash, n'hésitez pas à faire un tour sur [la documentation](https://www.elastic.co/guide/en/logstash/6.x/filter-plugins.html)). Enfin, pour la sortie nous allons envoyer nos données vers ElasticSearch.
+
+```ruby
+# /etc/logstash/conf.d/01-local-dev.conf
+input {
+  file { path => "/home/vagrant/access_log" }
+}
+filter {
+      grok {
+        match => { "message" => ["%{IPORHOST:[nginx][access][remote_ip]} - %{DATA:[nginx][access][user_name]} \[%{HTTPDATE:[nginx][access][time]}\] \"%{WORD:[nginx][access][method]} %{DATA:[nginx][access][url]} HTTP/%{NUMBER:[nginx][access][http_version]}\" %{NUMBER:[nginx][access][response_code]} %{NUMBER:[nginx][access][body_sent][bytes]} \"%{DATA:[nginx][access][referrer]}\" \"%{DATA:[nginx][access][agent]}\" %{NUMBER:[nginx][access][response_time]:float}"] }
+        remove_field => "message"
+      }
+      mutate {
+        add_field => { "read_timestamp" => "%{@timestamp}" }
+      }
+      date {
+        match => [ "[nginx][access][time]", "dd/MMM/YYYY:H:m:s Z" ]
+        remove_field => "[nginx][access][time]"
+      }
+      useragent {
+        source => "[nginx][access][agent]"
+        target => "[nginx][access][user_agent]"
+        remove_field => "[nginx][access][agent]"
+      }
+      geoip {
+        source => "[nginx][access][remote_ip]"
+      }
+}
+output {
+  elasticsearch {
+          hosts => "localhost:9200"
+        index => "logstash-local-dev-%{+YYYY.MM.dd}"
+  }
+}
+```
+
+Une fois que vous êtes satisfait de votre configuration, vous pouvez démarrer le service Logstash
+
+```
+sudo systemctl start logstash.service
+```
+
+Si vous souhaitez déboguer votre configuration, il est possible d'utiliser le module de sortie `stdout {}` de tester la configuration avec la commande :
+
+```bash
+sudo /usr/share/logstash/bin/logstash --debug --path.settings /etc/logstash -f /etc/logstash/conf.d/01-local-dev.conf
+```
+
+A partir de maintenant notre base de données ElasticSearch devrait se remplir en même temps que nos logs d'accès nginx. Pour vérifier que l'index est correctement créé, vous pouvez appeler l'API REST fournie par elasticSearch :
+
+```
+curl "localhost:9200/_cat/indices?v"
+```
+
+## Kibana
+
+Enfin nous allons pouvoir terminer avec la mise en place du dashboard Kibana. Comme d'habitude nous allons passer par les dépôts pour l'installer.
+
+```
+sudo apt-get install kibana
+```
+
+Nous allons ensuite éditer la configuration `/etc/kibana/kibana.yml` afin de ne pas écouter les connexions venant de l'extérieur.
+
+```
+network.host: localhost
+```
+
+Et une fois cette modification effectuée nous allons démarrer le service et l'enregistrer au démarrage.
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable kibana.service
+sudo systemctl start kibana.service
+```
+
+Si vous voulez vérifier que kibana et correctement démarré, il vous suffit d'appeler l'URL racine de l'application
+
+
+Avec notre configuration actuelle, il n'est pas possible d'accéder à kibana depuis l'extérieur. Nous allons donc utiliser nginx et créer un proxy pour accéder à notre dashboard et en profiter pour ajouter le système d'authentification basique. Pour générer le fichier qui contiendra les informations d'authentification nous allons utiliser le paquet `apache2-utils`
+
+```bash
+sudo apt-get install apache2-utils
+sudo htpasswd -c /etc/nginx/htpasswd.users tuto
+```
+
+Une fois ce fichier créé, nous pouvons configurer notre hôte virtuel sur nginx.
+
+```bash
+server {
+  listen 80;
+  server_name stats.local.development;
+
+  auth_basic "Acces interdit";
+  auth_basic_user_file /etc/nginx/htpasswd.users;
+
+  location / {
+    proxy_pass http://localhost:5601;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection 'upgrade';
+    proxy_set_header Host $host;
+    proxy_cache_bypass $http_upgrade;
+  }
+}
+```
+
+Après avoir recharger nginx, vous devriez être en mesure d'accéder à votre dashboard Kibana avec l'URL que vous avez définie. A partir de là, il ne vous reste plus qu'à construire le dashboard en fonction de vos besoins et des informations que vous jugez pertinentes :
+
+- On commence par définir un motif permettant de sélectionner les index à utiliser pour remplir les graphiques
+- Ensuite, on crée les visualisations (graphiques, tableaux, cartes...) en sélectionnant le type de représentation puis les données à utiliser.
+- Enfin, on crée un dashboard en sélectionnant les visualisations à utiliser et comment elles seront placées.
+
+## Et maintenant ?
+
+Maintenant vous savez utiliser la Stack Elastic et vous pouvez et à d'autres cas d'utilisation. À vous de voir le type de données qui vous intéresse et ce que vous voulez en faire.
+
+Une autre piste à explorer est l'utilisation du plugin [X-pack](https://www.elastic.co/fr/products/x-pack) qui permet de rajouter toute une série de fonctionnalités au système que l'on a déjà mis en place comme par exemple la création d'un système d'alerte, l'amélioration de la sécurité avec plusieurs niveaux de permission, la création de rapports personnalisés, etc...
+
+Maintenant vous savez utiliser la Stack Elastic et vous pouvez et à d'autres cas d'utilisation. À vous de voir le type de données qui vous intéresse et ce que vous voulez en faire.
+
+Une autre piste à explorer est l'utilisation du plugin [X-pack](https://www.elastic.co/fr/products/x-pack) qui permet de rajouter toute une série de fonctionnalités au système que l'on a déjà mis en place comme par exemple la création d'un système d'alerte, l'amélioration de la sécurité avec plusieurs niveaux de permission, la création de rapports personnalisés, etc...
+
+Maintenant vous savez utiliser la Stack Elastic et vous pouvez et à d'autres cas d'utilisation. À vous de voir le type de données qui vous intéresse et ce que vous voulez en faire.
+
+Une autre piste à explorer est l'utilisation du plugin [X-pack](https://www.elastic.co/fr/products/x-pack) qui permet de rajouter toute une série de fonctionnalités au système que l'on a déjà mis en place comme par exemple la création d'un système d'alerte, l'amélioration de la sécurité avec plusieurs niveaux de permission, la création de rapports personnalisés, etc...
+
+Maintenant vous savez utiliser la Stack Elastic et vous pouvez et à d'autres cas d'utilisation. À vous de voir le type de données qui vous intéresse et ce que vous voulez en faire.
+
+Une autre piste à explorer est l'utilisation du plugin [X-pack](https://www.elastic.co/fr/products/x-pack) qui permet de rajouter toute une série de fonctionnalités au système que l'on a déjà mis en place comme par exemple la création d'un système d'alerte, l'amélioration de la sécurité avec plusieurs niveaux de permission, la création de rapports personnalisés, etc...     
+        </textarea>
+      </div>
     </div>
+   
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>
