@@ -11,15 +11,16 @@ import DOMPurify from 'dompurify';
 
 #=== editorMD ===#
 $.fn.extend
-  editorMD: () -> 
+  editorMD: (vars) -> 
+    
     elements = """<div class="mdeditor">
       <div class="mdeditor_toolbar"></div>
-      <div class="mdeditor_body">
       <div class="mdeditor_editor">
-      <textarea class="mdeditor_textarea"></textarea>
+      <div>
+        <textarea class="mdeditor_textarea"></textarea>
+      </div>
       </div>
       <div class="mdeditor_preview">
-      </div>
       </div>
       </div>"""
     mdeditor = $('<div data-mdeditor></div>')
@@ -32,12 +33,10 @@ $.fn.extend
     this.remove()
     editor = CodeMirror.fromTextArea(custom_textarea[0], {
       mode: 'markdown',
-      tabMode: 'indent',
       theme: 'neo',
       lineWrapping: true,
       viewportMargin: Infinity,
-      showMarkdownLineBreaks: true,
-      cursorBlinkRate: false
+      cursorBlinkRate: 0
     });
 
     marked.setOptions({
@@ -49,7 +48,7 @@ $.fn.extend
       smartLists: true,
       smartypants: false
     })
-    
+    #custom_textarea.remove()
     updateContent(editor)
     createButton()
     boldContent(editor)
@@ -59,7 +58,11 @@ $.fn.extend
     imageContent(editor)
     resizeEditor()
     markedContent(editor)
-    setSection()
+    mdeditor_editor_section = setSection('.mdeditor_editor')
+    mdeditor_preview_section = setSection('.mdeditor_preview')
+    if vars == "syncScroll"
+      scrollEditor(mdeditor_editor_section, mdeditor_preview_section)
+    
 
 #=== markedContent ===#
 markedContent = (editor) ->
@@ -83,29 +86,61 @@ updateContent = (editor) ->
     markedcontent = DOMPurify.sanitize(marked.parse(value))
     $('.mdeditor_preview').html(markedcontent)
 
+#=== ScrollEditor ===#
+scrollEditor = (mdeditor_editor_section, mdeditor_preview_section) ->
+  scrolling_element = null
+  $('.mdeditor_editor').on 'mouseenter', ->
+    scrolling_element = 'editor'
+  
+  $('.mdeditor_preview').on 'mouseenter', ->
+    scrolling_element = 'preview'
+
+  $('.mdeditor_editor').on 'scroll', () -> 
+    if scrolling_element == 'editor'
+      scrollTop = getScrolPosition($(this).scrollTop(), mdeditor_editor_section, mdeditor_preview_section)
+      $('.mdeditor_preview').scrollTop(scrollTop)
+
+  $('.mdeditor_preview').on 'scroll', () -> 
+    if scrolling_element == 'preview'
+      scrollTop = getScrolPosition($(this).scrollTop(), mdeditor_preview_section, mdeditor_editor_section)
+      $('.mdeditor_editor').scrollTop(scrollTop)
+
 #=== setSection ===# 
-setSection = () ->
+setSection = (className) ->
+  element = $(className)
   selectors = []
   for i in [1..6]
-    selectors.push(".cm-header-#{i}")
+    selectors.push("#{className} .cm-header-#{i}", "#{className} h#{i}")
 
   matches = $(selectors.join(', ')) 
   previous = 0
   sections = []
-  console.log(matches)
   $.each matches, (index, item) ->
-    offset_Top = offsetTop(item)
+    curr_item = $(item)
+    offset_Top = offsetTop(curr_item, element)
     sections.push([previous, offset_Top])
     previous = offset_Top
-  sections.push([previous, element.scrollHeight])
+  sections.push([previous, element.prop('scrollHeight')])
   return sections
 
-offsetTop = (element, target, acc = 0) ->
+
+offsetTop = (target,element, acc = 0) ->
   if element == target
-    return acc
-  console.log element
-  if element != null
-    return offsetTop(element.offsetParent, target, acc + element.offsetTop)
+    return acc  
+  return offsetTop(element.parent, target, acc + element.offset().top)
+
+#=== get Index section ===#
+getIndex = (y, sections) ->
+  sections.findIndex (section) ->
+    return y >= section[0] && y <= section[1]
+
+#=== getScrolPosition ===#
+getScrolPosition = (y, sourceSections, targetSections) ->
+  index = getIndex(y, sourceSections)
+  section = sourceSections[index]
+  percentage = (y - section[0]) / (section[1] - section[0])
+  targetSection = targetSections[index]
+  targetSection[0] + percentage * (targetSection[1] - targetSection[0])
 
 #=== boldContent ===# 
 boldContent = (editor) ->

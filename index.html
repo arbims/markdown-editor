@@ -3,13 +3,24 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/src/assets/favicon.svg" />
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css">
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Create Coffee App</title>
   </head>
   <body>
-    <div class="container" style="margin-top: 50px;">
-      <h3>Content Markdown</h3>
-      <div>  
+      <header>
+        <nav class="navbar navbar-expand-lg navbar navbar-dark bg-primary">
+          <a class="navbar-brand" href="#">Markdown</a>
+          <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+          </button>
+        
+          <div class="collapse navbar-collapse" id="navbarSupportedContent">
+          </div>
+        </nav>
+      </header>
+      <div class="container" style="margin-top: 50px;">  
+        <h3>Content Markdown</h3>
         <textarea name="content" class="el">
 # How use Javascript lib
 
@@ -298,7 +309,6 @@ Maintenant vous savez utiliser la Stack Elastic et vous pouvez et à d'autres ca
 Une autre piste à explorer est l'utilisation du plugin [X-pack](https://www.elastic.co/fr/products/x-pack) qui permet de rajouter toute une série de fonctionnalités au système que l'on a déjà mis en place comme par exemple la création d'un système d'alerte, l'amélioration de la sécurité avec plusieurs niveaux de permission, la création de rapports personnalisés, etc...     
         </textarea>
       </div>
-    </div>
    
     <script type="module" src="/src/main.js"></script>
   </body>
