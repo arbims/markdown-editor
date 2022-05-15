@@ -12,7 +12,7 @@ import DOMPurify from 'dompurify';
 #=== editorMD ===#
 $.fn.extend
   editorMD: (vars) -> 
-    
+
     elements = """<div class="mdeditor">
       <div class="mdeditor_toolbar"></div>
       <div class="mdeditor_editor">
@@ -60,7 +60,7 @@ $.fn.extend
     markedContent(editor)
     mdeditor_editor_section = setSection('.mdeditor_editor')
     mdeditor_preview_section = setSection('.mdeditor_preview')
-    if vars == "syncScroll"
+    if vars.syncScroll == true
       scrollEditor(mdeditor_editor_section, mdeditor_preview_section)
     
 

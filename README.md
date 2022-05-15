@@ -18,14 +18,15 @@ To transform a textarea in an markdown editor you just have to create a new edit
   <textarea class="editor_custom"> </textarea>
 </div>
 ```
+
 ```javascript
 $('.editor_custom').editorMD();
 ```
-You can pass options as the second parameter
+You can pass options as the second parameter to activate sync Scroll
 
 ```javascript
 $('.editor_custom').editorMD({
-
+  syncScroll: true
 });
 ```
 
