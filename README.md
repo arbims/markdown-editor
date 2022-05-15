@@ -2,7 +2,7 @@
 
 ![The result](screenshot.png)
 
-[DEMO](http://rawgit.com/Grafikart/JS-Markdown-Editor/master/dist/demo.html)
+[DEMO](https://arbims.github.io/)
 
 # technologies used
   * viteJs
